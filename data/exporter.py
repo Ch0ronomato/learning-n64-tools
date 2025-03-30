@@ -16,14 +16,14 @@ header = """
 #define __GAME_OBJECT_H__
 
 #define NUM_GAME_OBJECTS REPLACE_WITH_COUNT
-#include "../math/vector3.h"
 
 // We need to register these somewhere. The pattern from Rampage is a big gRampage state object
 // LoL does the whole GameObjectManager thing. 
 struct game_object
 {
-    struct Vector3 position;    
-    struct Vector3 scale;
+    float position[3];    
+    float scale[3];
+    float rotation[3];
     const char* name;
     const char* rom;
     const unsigned int numTriangles;
@@ -43,10 +43,11 @@ with open(os.path.join(CPP_PATH, "game_object.h"), "w+") as f:
         # Eventually this should produce a dynamic_object
         # from the collision system? but for now, we'll
         # just make sure it all works together
-        struct = """    {{ {POSITION}, {SCALE}, {NAME}, {ROM}, {TRIS} }}"""
+        struct = """    {{ {POSITION}, {ROTATION}, {SCALE}, {NAME}, {ROM}, {TRIS} }}"""
+        # build the rotation nicer
         struct = struct.format(
             i=i,
-            POSITION=".position = {" + f"{object.location.x:.6f}f, {object.location.y:.6f}f, {object.location.z:.6f}f" + "}",
+            POSITION=".position = {" + f"{object.location.x:.6f}f, {object.location.y:.6f}f, {object.location.z:.6f}f" + "}"
             SCALE=".scale = {" + f"{object.scale.x:.6f}f, {object.scale.y:.6f}f, {object.scale.z:.6f}f" + "}",
             NAME=f".name = \"{object.name}\"",
             ROM=f".rom = \"rom:/{object.name.lower()}.t3dm\"",
@@ -91,25 +92,26 @@ for object in visible:
             dest = os.path.join(MAIN_PATH, "assets", name)
             shutil.copy(tex.filepath_from_user(), dest)
 
-# lets handle the camera
-# i'm a grug brain, only 1 camera please
-assert len(list(filter(lambda x: x.type == "CAMERA", scene.objects))) == 1
-camera = [x for x in scene.objects if x.type == "CAMERA"][0]
-camera_struct = "struct camera_opts { float fov; float near; float far; float pos[3];};\n"
-camera_struct_data = """static struct camera_opts gCamera = 
-{{
-    .fov = {FOV},
-    .near = {NEAR},
-    .far = {FAR},
-    .pos = {POS}
-}};
-"""
-camera_struct_data = camera_struct_data.format(
-    FOV=camera.fov,
-    NEAR=f"{camera.data.clip_start:.6f}",
-    FAR=f"{camera.data.clip_end:.6f}",
-    POS="{" + ", ".join(f"{f:.6f}" for f in camera.location) + "}"
-)
+def handle_camera():
+    # lets handle the camera
+    # i'm a grug brain, only 1 camera please
+    assert len(list(filter(lambda x: x.type == "CAMERA", scene.objects))) == 1
+    camera = [x for x in scene.objects if x.type == "CAMERA"][0]
+    camera_struct = "struct camera_opts { float fov; float near; float far; float pos[3];};\n"
+    camera_struct_data = """static struct camera_opts gCamera = 
+    {{
+        .fov = {FOV},
+        .near = {NEAR},
+        .far = {FAR},
+        .pos = {POS}
+    }};
+    """
+    camera_struct_data = camera_struct_data.format(
+        FOV=camera.fov,
+        NEAR=f"{camera.data.clip_start:.6f}",
+        FAR=f"{camera.data.clip_end:.6f}",
+        POS="{" + ", ".join(f"{f:.6f}" for f in camera.location) + "}"
+    )
 
-with open(os.path.join(CPP_PATH, "camera.h"), "w+") as f:
-    f.write(camera_struct + camera_struct_data)
+    with open(os.path.join(CPP_PATH, "camera.h"), "w+") as f:
+        f.write(camera_struct + camera_struct_data)

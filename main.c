@@ -4,7 +4,7 @@
 #include <t3d/t3ddebug.h>
 #include "./data/game_object.h"
 // @todo: Can we handle the camera?
-// #include "./data/camera.h"
+#include "./data/camera.h"
 
 /**
  * This shows how you can draw multiple objects (actors) in a scene.
@@ -104,7 +104,7 @@ int main()
     actors[i] = actor_create(i, dpls[i]);
   }
 
-  const T3DVec3 camPos = {{ 100.0f,250.0f, 100.f }};
+  const T3DVec3 camPos = {{gCamera.pos[0], gCamera.pos[1], gCamera.pos[2]}};
   const T3DVec3 camTarget = {{0,0,0}}; // look at the origin I guess
 
   uint8_t colorAmbient[4] = {80, 50, 50, 0xFF};
@@ -130,7 +130,7 @@ int main()
     timeUpdate = get_time_ms() - timeUpdate;
 
     t3d_viewport_set_projection(&viewport, T3D_DEG_TO_RAD(65.0f), 10.f, 500.f);
-    t3d_viewport_look_at(&viewport, &camPos, &camTarget, &(T3DVec3){{0,1,0}});
+    t3d_viewport_look_at(&viewport, &camPos, &camTarget, &(T3DVec3){{0,0,1}});
 
     // ======== Draw (3D) ======== //
     rdpq_attach(display_get(), display_get_zbuf());
