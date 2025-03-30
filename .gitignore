@@ -1,0 +1,5 @@
+build
+filesystem
+assets
+*.z64
+.vscode
