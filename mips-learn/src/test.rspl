@@ -1,0 +1,15 @@
+include "rsp_queue.inc"
+
+state
+{
+    u16 s;
+}
+
+@Align(16)
+command<0> RsplTest(u16 outVal)
+{
+    u16<$t0> temp = load(s);
+    temp = temp + 1;
+    store(temp, s);
+    dma_out(s, outVal);
+}

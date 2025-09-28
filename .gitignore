@@ -1,5 +1,6 @@
-build
-filesystem
-assets
-*.z64
+**/build
+**/libdragon
+**/filesystem
+**/assets
+**/*.z64
 .vscode
