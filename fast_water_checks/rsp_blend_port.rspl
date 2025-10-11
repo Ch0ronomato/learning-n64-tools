@@ -1,0 +1,98 @@
+include "rsp_queue.inc"
+
+state {
+  u32 SRC_RDRAM;
+  u16 SRC_WIDTH; 
+  u16 SRC_HEIGHT;
+}
+
+bss {
+  vec16 SRC_BUF[80];
+  vec16 DST_BUF[80];
+}
+
+command<0> BlendCmd_SetSource(u32 source_pointer, u32 sourceSize)
+{
+  u16<$t0> sizeX = sourceSize >> 16;
+  u16<$t1> isDivEight = sizeX & 0x7;
+
+  if(isDivEight > 0) {
+    assert(0x01010);
+  }
+
+  if(sizeX > 640) {
+    assert(0x01010);
+  }
+
+  sizeX = sizeX * 2; // Convert to bytes
+  u16 sizeY = sourceSize & 0xFFFF;
+  store(sizeX, SRC_WIDTH);
+  store(sizeY, SRC_HEIGHT);
+  store(source_pointer, SRC_RDRAM);
+}
+
+command<1> BlendCmd_ProcessLine(u32 target_pointer)
+{
+  u32<$s0> s = SRC_RDRAM;
+  u16<$t0> size = load(SRC_WIDTH);
+  dma_in_async(SRC_BUF, s, size);
+
+  // Keep an eye out for alignment, this might be
+  // bad alignment. No clue how to tell
+  dma_in(DST_BUF, target_pointer, size);
+  
+  u32<$s3> src_ptr = load(SRC_BUF);
+  u32<$s4> dst_ptr = load(DST_BUF);
+  u16<$t7> width = load(SRC_WIDTH);
+  vec16<$v28> konstants;
+  konstants.x = 0x1F;
+
+  while (width >= 0) {
+    // Do the RGB split
+    vec16<$v01> vsrc16 = load(src_ptr);
+    vec16<$v05> vdst16 = load(dst_ptr);
+    
+    // This code isn't exactly the same,
+    // since we aren't doing shifts. That 
+    // might be more performant than a vmudm
+    // But lets trust the interpreter. 
+    //
+    // I do wonder if these could use swizzle
+    // syntax instead.
+    vec16<$v02> vsrcr16 = vsrc16 >> 1;
+    vec16<$v03> vsrcg16 = vsrc16 << 4;
+    vec16<$v04> vsrcb16 = vsrc16 << 9;
+    
+    vec16<$v06> vdstr16 = vdst16 >> 1;
+    vec16<$v07> vdstg16 = vdst16 << 4;
+    vec16<$v08> vdstb16 = vdst16 << 9;
+    
+    vsrcr16 &= konstants.x;
+    vsrcb16 &= konstants.x;
+    vsrcg16 &= konstants.x;
+    
+    vdstr16 &= konstants.x;
+    vdstb16 &= konstants.x;
+    vdstg16 &= konstants.x;
+
+    vdstr16 += vsrcr16;
+    vdstg16 += vsrcg16;
+    vdstb16 += vsrcb16;
+
+    // pack back into dest
+    vdstr16 = vdstr16 << 1;
+    vdstg16 = vdstg16 >> 4;
+    vdstb16 = vdstb16 >> 9;
+    
+    vdst16 = vdstr16 | vdstg16;
+    vdst16 |= vdstb16;
+    
+    store(vdst16, dst_ptr);
+    dst_ptr += 16;
+    src_ptr += 16;
+    width -= 16;
+  }
+  
+  dma_out(DST_BUF, target_pointer);
+  store(src_ptr, SRC_RDRAM);
+}
