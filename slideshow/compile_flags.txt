@@ -1,0 +1,3 @@
+-std=c++17
+-I/Users/ischweer/dev/n64dev/libdragon/include
+-I/Users/ischweer/dev/n64dev/tiny3d/src
